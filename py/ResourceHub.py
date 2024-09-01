@@ -1,34 +1,81 @@
-from selenium import webdriver 
+import os
+import json
+import time
+import shutil
+import urllib.parse
+import urllib.request
+from getpass import getuser
+from urllib.parse import urlparse, parse_qs
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
-import os
-import time
-import json
-import shutil
-import urllib.parse
-import urllib.request
-import py.Constant as C
 import aspose.words as aw
-from getpass import getuser
 import aspose.imaging as imaging
-from urllib.parse import urlparse, parse_qs
+import py.Constant as C
+
+request_logs = []
+
+def cache(suministro):
+    path = r'C:\Users\{}\Documents\Js\Bot\py\pdf'.format(getuser())
+    os.makedirs(path, exist_ok=True)
+    
+    pdf_filename = f"{suministro}.pdf"
+    if pdf_filename in os.listdir(path):
+        return os.path.join(path, pdf_filename)
+    else:
+        return None
+
+# def load_existing_logs(filename):
+#     try:
+#         with open(filename, 'r') as file:
+#             if file.read(1):
+#                 file.seek(0)  # Rewind the file if not empty
+#                 return json.load(file)
+#             else:
+#                 return {}  # Return an empty dict if file is empty
+#     except FileNotFoundError:
+#         return {}  # Return an empty dict if file does not exist
+#     except json.JSONDecodeError:
+#         return {}  # Return an empty dict if JSON is invali
+    
+# def save_logs_to_file(logs, filename='request_logs.json'):
+#     """
+#     Guarda los registros en el archivo JSON, reemplazando el contenido existente.
+#     """
+#     with open(filename, 'w') as file:
+#         json.dump(logs, file, indent=4)
+
+# def log_request(suministro, response_data, filename='request_logs.json'):
+#     """
+#     Registra la solicitud y la respuesta en un formato JSON.
+#     """
+#     try:
+#         # Cargar registros existentes
+#         logs = load_existing_logs(filename)
+        
+#         # Agregar el nuevo registro
+#         request_log = {
+#             "suministro": suministro,
+#             "response": response_data
+#         }
+#         logs.append(request_log)
+        
+#         # Guardar los registros actualizados en el archivo JSON
+#         save_logs_to_file(logs, filename)
+
+#     except AttributeError:
+#         pass
+
+# def obtener_valores(suministro,datos):
+#     for item in datos:
+#         if item['suministro'] == suministro:
+#             return item['response']
+#     return None
+
 
 def SearchFileWeb(suministro):
-    """
-    Realiza una búsqueda en la página web especificada utilizando el suministro proporcionado.
-    
-    Abre un navegador Firefox en modo sin cabeza (headless) para acceder a la página web,
-    ingresa el suministro en un campo de texto y realiza una acción para obtener un documento relacionado.
-    
-    Args:
-        suministro (str): El suministro que se utilizará para buscar el archivo en la web.
-    
-    Returns:
-        tuple: Una tupla que contiene la URL del documento incrustado en la página web (Framesubdoc) y el suministro utilizado.
-    """
     options = Options()
     # options.add_argument("--headless")
     driver = webdriver.Firefox(options=options)
@@ -41,140 +88,101 @@ def SearchFileWeb(suministro):
     sendContent = wait.until(EC.presence_of_all_elements_located((By.XPATH, C.exp.btn)))
     sendContent[0].click()
 
-    time.sleep(3)
-    Framesubdoc = wait.until(EC.presence_of_element_located((By.ID, C.exp.subdoc))).get_attribute('src')
-    driver.quit()
+    time.sleep(2)
 
-    return Framesubdoc, suministro
+    table_send = wait.until(EC.presence_of_all_elements_located((By.XPATH, C.exp.table)))
+    for n_ in range(len(table_send)):
+        table_tr = wait.until(EC.presence_of_element_located((By.XPATH,C.exp.tr.replace('@',f'{n_+1}')))).click()
+        info = wait.until(EC.presence_of_element_located((By.ID,'sp_cargo_documento'))).text
+        if 'CARTAS / REEMPLAZO DE MEDIDOR EMPRESAS' == info:
+            time.sleep(2)
+            Framesubdoc = wait.until(EC.presence_of_element_located((By.ID, C.exp.subdoc))).get_attribute('src')
+            driver.quit()
+            print(Framesubdoc)
+            return Framesubdoc, suministro
+        else:
+            pass
 
 def UrlSubdoc(Framesubdoc):
-    """
-    Extrae la URL del documento de un iframe embebido en la página web.
-    A partir de la URL del iframe, parsea los parámetros de la URL y 
-    extrae el valor del parámetro 'url'.
-
-    Args:
-        Framesubdoc (str): La URL del iframe que contiene el documento.
-
-    Returns:
-        str: La URL directa del documento o None si no se encuentra el parámetro 'url'.
-    """
     ParsedUrl = urlparse(Framesubdoc)
     QueryParams = parse_qs(ParsedUrl.query)
     Url = QueryParams.get('url', [None])[0]
     return Url
 
 def FileWebDownloads(url, suministro):
-    """
-    Descarga un archivo desde la URL especificada y lo guarda en el 
-    sistema de archivos con un nombre basado en el suministro.
-
-    Si la descarga es exitosa, el archivo se guarda con el nombre '<suministro>.tif'. 
-    En caso de error, se captura la excepción y se imprime un mensaje.
-
-    Args:
-        url (str): La URL desde la que se descargará el archivo.
-        suministro (str): El suministro que se utilizará para nombrar el archivo descargado.
-
-    Returns:
-        str: El nombre del archivo descargado o None si ocurrió un error durante la descarga.
-    """
     try:
         if url != 'http://www.easyenvios.com/escan1/006/003/3/00000001/01/00300000001000001.TIF':
             filename = suministro + '.tif'
             with urllib.request.urlopen(urllib.request.Request(url)) as response, open(filename, "wb") as out_file:
                 data = response.read()
                 out_file.write(data)
-            return filename  # Es importante retornar el nombre del archivo aquí
+            return filename
         else:
-            return False
-
+            return None
     except Exception as e:
         print(f"Error al descargar el archivo: {e}")
         return None
 
 def ConvertPdf(filename):
-    """
-    Convierte un archivo TIFF a PDF utilizando la biblioteca Aspose.Words.
-
-    Si el archivo TIFF se ha descargado correctamente, se inserta en un nuevo documento PDF
-    y se guarda con el mismo nombre pero con extensión '.pdf'. Si el archivo no se descargó correctamente,
-    se imprime un mensaje de error.
-
-    Args:
-        filename (str): El nombre del archivo TIFF que se convertirá a PDF.
-    """
-
     if filename:
         doc = aw.Document()
         builder = aw.DocumentBuilder(doc)
         builder.insert_image(filename)
-        doc.save(filename.replace('.tif', '.pdf'))
-        return filename.replace('.tif', '.pdf')
-        # print(f"Archivo TIFF convertido a PDF y guardado en {filename.replace('.tif', '.pdf')}")
+        pdf_filename = filename.replace('.tif', '.pdf')
+        doc.save(pdf_filename)
+        return pdf_filename
     else:
-        return False
-        # print("No se pudo convertir a PDF porque el archivo TIFF no se descargó correctamente.")
+        return None
 
-def Templades(resp):
-        if resp != False:
-            path = r'C:\Users\{}\Documents\Js\Bot\py\pdf'.format(getuser())
-            os.makedirs(path,exist_ok=True)
+def Templades(pdf_filename):
+    if pdf_filename:
+        path = r'C:\Users\{}\Documents\Js\Bot\py\pdf'.format(getuser())
+        os.makedirs(path, exist_ok=True)
 
-            # direct = []
-            # for _ in range(2):
-            #     path = os.path.dirname(path)
-            #     direct.append(path)
+        shutil.move(pdf_filename, os.path.join(path, pdf_filename))
+        os.remove(pdf_filename.replace('.pdf', '.tif'))
+    else:
+        print("No se encontró el archivo PDF para aplicar la plantilla.")
 
-            # os.chdir(direct[1])
-            
-            files = os.listdir()
-
-            pdf_destination = r'C:\Users\{}\Documents\Js\Bot\py\pdf'.format(getuser())
-            os.makedirs(pdf_destination, exist_ok=True)
-
-            # Filtrar y procesar archivos
-            for file in files:
-                if file.endswith('.tif'):
-                    # Eliminar archivos .tif
-                    os.remove(file)
-                    # print(f'Archivo eliminado: {file}')
-                elif file.endswith('.pdf'):
-                    # Mover archivos .pdf al destino
-                    shutil.move(file, os.path.join(pdf_destination, file))
-                    # print(f'Archivo movido: {file} -> {pdf_destination}')
-        else:
-            pass
-
-def ConsultApi(ip,port,endpoint,key_data,suministro):
+def ConsultApi(ip, port, endpoint, key_data, suministro):
+    # Verifica la caché primero
+    # pdf_file = cache(suministro)
+    # if pdf_file:
+    #     return pdf_file
     
-    # url = "http://localhost:4000/procesar_suministro"
-    # url = "http://localhost:5000/search"
-    
+    # Si no se encuentra en la caché, procede con la solicitud
     url = f"http://{ip}:{port}/{endpoint}"
 
-    # Crear los datos en formato JSON
     data = {
-        "suministro": suministro  # Reemplaza con el suministro que quieras enviar
+        "suministro": suministro
     }
 
-    # Convertir los datos a un formato de bytes
     data_bytes = json.dumps(data).encode('utf-8')
 
-    # Configurar la solicitud POST
     req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'}, method='POST')
 
-    # Hacer la solicitud y leer la respuesta
     try:
         with urllib.request.urlopen(req) as response:
-            # Leer la respuesta y decodificarla
             response_data = response.read().decode('utf-8')
-            # Convertir la respuesta a un diccionario
             result = json.loads(response_data)
-            data = result.get(key_data)
-            return data
-
+            data_r = result.get(key_data)
+            # Registrar la solicitud y la respuesta
+            # log_request(suministro,data_r,filename='request_logs.json')
+            if data_r is None:
+                return 'suministro no existe en base de datos'
+            return data_r
+        
     except urllib.error.HTTPError as e:
         print(f'Error HTTP: {e.code} - {e.reason}')
     except urllib.error.URLError as e:
         print(f'Error URL: {e.reason}')
+    
+    return None
+
+
+
+
+
+
+
+

@@ -25,7 +25,7 @@ from urllib.parse import urlparse, parse_qs
 
 # import seleniumwire.webdriver as webdriver  # Import from seleniumwire
 
-def base_code():
+def base_code_01():
     options = Options()
     options.add_argument("--headless")
 
@@ -100,67 +100,122 @@ import time
 import Constant as C
 from queue import Queue
 
-# Decorador para medir el tiempo de ejecución
-def medir_tiempo(func):
-    def wrapper(*args, **kwargs):
-        inicio = time.time()
-        resultado = func(*args, **kwargs)
-        fin = time.time()
-        print(f"{func.__name__} tomó {fin - inicio:.2f} segundos")
-        return resultado
-    return wrapper
+def base_code_02():
+    # Decorador para medir el tiempo de ejecución
+    def medir_tiempo(func):
+        def wrapper(*args, **kwargs):
+            inicio = time.time()
+            resultado = func(*args, **kwargs)
+            fin = time.time()
+            print(f"{func.__name__} tomó {fin - inicio:.2f} segundos")
+            return resultado
+        return wrapper
 
-def test_queue(driver,wait,s):
-    # Crear una queue (cola)
-    cola = Queue()
+    def test_queue(driver,wait,s):
+        # Crear una queue (cola)
+        cola = Queue()
 
-    # Encolar (agregar) elementos a la cola
-    cola.put(s)
+        # Encolar (agregar) elementos a la cola
+        cola.put(s)
 
-    # Obtener y mostrar los elementos de la cola
-    print("Elementos de la cola:")
+        # Obtener y mostrar los elementos de la cola
+        print("Elementos de la cola:")
 
-    while not cola.empty():
-        # Desencolar y mostrar el elemento
-        elemento = cola.get()
-        driver.execute_script("window.open('https://hasbercourier.easyenvios.com/', 'twotab');")
-        driver.switch_to.window(driver.window_handles[-1])
-        suburl = test_add(wait,elemento)
-        driver.close()
-        driver.switch_to.window(driver.window_handles[0])
-        print(suburl)
-        # driver.switch_to.window(window_handles[0])
-        # time.sleep(2)
-        # print('over')
-        # print(elemento)
+        while not cola.empty():
+            # Desencolar y mostrar el elemento
+            elemento = cola.get()
+            driver.execute_script("window.open('https://hasbercourier.easyenvios.com/', 'twotab');")
+            driver.switch_to.window(driver.window_handles[-1])
+            suburl = test_add(wait,elemento)
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+            print(suburl)
+            # driver.switch_to.window(window_handles[0])
+            # time.sleep(2)
+            # print('over')
+            # print(elemento)
 
-@medir_tiempo
-def test_add(wait,suministro):
-    time.sleep(2)
-    sandbox = wait.until(EC.presence_of_element_located((By.ID, C.exp.box)))
-    sandbox.send_keys(suministro)
+    @medir_tiempo
+    def test_add(wait,suministro):
+        time.sleep(2)
+        sandbox = wait.until(EC.presence_of_element_located((By.ID, C.exp.box)))
+        sandbox.send_keys(suministro)
 
-    sendContent = wait.until(EC.presence_of_all_elements_located((By.XPATH, C.exp.btn)))
-    sendContent[0].click()
+        sendContent = wait.until(EC.presence_of_all_elements_located((By.XPATH, C.exp.btn)))
+        sendContent[0].click()
 
-    time.sleep(3)
-    Framesubdoc = wait.until(EC.presence_of_element_located((By.ID, C.exp.subdoc))).get_attribute('src')
-    return Framesubdoc
+        time.sleep(3)
+        Framesubdoc = wait.until(EC.presence_of_element_located((By.ID, C.exp.subdoc))).get_attribute('src')
+        return Framesubdoc
 
-def test_navigator():
-    options = Options()
-    options.add_argument("--headless")
-    driver = webdriver.Firefox(options=options)
-    wait = WebDriverWait(driver, 60)
-    driver.get('https://hasbercourier.easyenvios.com/')
-    # driver.execute_script("window.open('https://hasbercourier.easyenvios.com/', 'twotab');")
-    # driver.execute_script("window.open('https://hasbercourier.easyenvios.com/', 'treetab');")
-    # window_handles = driver.window_handles
-    # driver.switch_to.window(window_handles[0])
-    return driver,wait
+    def test_navigator():
+        options = Options()
+        # options.add_argument("--headless")
+        driver = webdriver.Firefox(options=options)
+        wait = WebDriverWait(driver, 60)
+        driver.get('https://hasbercourier.easyenvios.com/')
+        return driver,wait
 
-www = [1337534,1337535,1337536,1337534,1337535,1337536]
-driver,wait = test_navigator()
-for s in www:
-    test_queue(driver,wait,s)
+    www = [1337534,1337535,1337536,1337534,1337535,1337536]
+    driver,wait = test_navigator()
+    test_queue(driver,wait,www[0])
+    test_queue(driver,wait,www[1])
 
+
+# base_code_02()
+
+# def test_src_subdoc(wait,suministro):
+#     time.sleep(2)
+#     sandbox = wait.until(EC.presence_of_element_located((By.ID, C.exp.box)))
+#     sandbox.send_keys(suministro)
+
+#     sendContent = wait.until(EC.presence_of_all_elements_located((By.XPATH, C.exp.btn)))
+#     sendContent[0].click()
+
+#     time.sleep(3)
+#     Framesubdoc = wait.until(EC.presence_of_element_located((By.ID, C.exp.subdoc))).get_attribute('src')
+#     return Framesubdoc
+
+# def test_queue_(driver,wait,suministro):
+
+#     driver.execute_script("window.open('https://hasbercourier.easyenvios.com/', '');")
+
+#     # Crear una queue (cola)
+#     cola = Queue()
+
+#     # Encolar (agregar) elementos a la cola
+#     cola.put(suministro)
+
+#     # Obtener y mostrar los elementos de la cola
+#     print("Elementos de la cola:",cola.get())
+
+#     test_src_subdoc(wait,cola.get())
+    
+# def base_code_03():
+#     options = Options()
+#     # options.add_argument("--headless")
+#     driver = webdriver.Firefox(options=options)
+#     wait = WebDriverWait(driver, 60)
+#     driver.get('https://hasbercourier.easyenvios.com/')
+#     return driver,wait
+
+#     # sandbox = wait.until(EC.presence_of_element_located((By.ID,C.exp.box)))
+#     # sandbox.send_keys(suministro)
+
+#     # sendContent = wait.until(EC.presence_of_all_elements_located((By.XPATH,C.exp.btn)))
+#     # sendContent[0].click()
+
+#     # time.sleep(3)
+#     # Framesubdoc = wait.until(EC.presence_of_element_located((By.ID,C.exp.subdoc))).get_attribute('src')
+#     # driver.quit()
+
+#     # return Framesubdoc, suministro
+
+# # las peticiones nunca seran al mismo tiempo
+# dd = [1337534,1337535,1337536,1337534,1337535,1337536]
+# driver,wait = base_code_03()
+# test_queue_(driver,wait,dd[0])
+# # time.sleep(6)
+# # test_queue_(driver,wait,dd[1])
+# # for s in www:
+# #     test_queue_(driver,wait,s)

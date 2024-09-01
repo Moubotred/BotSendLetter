@@ -7,6 +7,7 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+from selenium.common.exceptions import WebDriverException
 
 import time
 from flask import Flask, request, jsonify
@@ -39,6 +40,21 @@ def medir_tiempo(func):
         return resultado
     return wrapper
 
+def cargo_de_envios(wait):
+    time.sleep(3)
+    table_send = wait.until(EC.presence_of_all_elements_located((By.XPATH, C.exp.table)))
+    for n_ in range(len(table_send)):
+        table_tr = wait.until(EC.presence_of_element_located((By.XPATH,C.exp.tr.replace('@',f'{n_+1}')))).click()
+        # time.sleep(2)
+        info = wait.until(EC.presence_of_element_located((By.ID,'sp_cargo_documento'))).text
+        if 'CARTAS / REEMPLAZO DE MEDIDOR EMPRESAS' == info:
+            # time.sleep(1)
+            Framesubdoc = wait.until(EC.presence_of_element_located((By.ID, C.exp.subdoc))).get_attribute('src')
+            return Framesubdoc
+        
+        elif 'VOLANTES / AVISO DE CORTE' == info:
+            return 'No hay carta de CAMBIO DE MEDIDOR solo AVISO DE CORTE'
+    
 @medir_tiempo
 def test_add(wait, suministro):
     """
@@ -59,9 +75,12 @@ def test_add(wait, suministro):
         sendContent = wait.until(EC.presence_of_all_elements_located((By.XPATH, C.exp.btn)))
         sendContent[0].click()
 
-        time.sleep(3)
-        Framesubdoc = wait.until(EC.presence_of_element_located((By.ID, C.exp.subdoc))).get_attribute('src')
-        return Framesubdoc
+        rs = cargo_de_envios(wait)
+        return rs
+    
+        # time.sleep(3)
+        # Framesubdoc = wait.until(EC.presence_of_element_located((By.ID, C.exp.subdoc))).get_attribute('src')
+        # return Framesubdoc
 
     except Exception as e:
         print(f"Error en test_add: {e}")
@@ -86,10 +105,9 @@ def test_queue(driver, wait, suministro):
     while not cola.empty():
         elemento = cola.get()
         try:
-            pass
-            # driver.execute_script("window.open('https://hasbercourier.easyenvios.com/', 'twotab');")
-            # driver.switch_to.window(driver.window_handles[-1])
-            # result = test_add(wait, elemento)
+            driver.execute_script("window.open('https://hasbercourier.easyenvios.com/', '');")
+            driver.switch_to.window(driver.window_handles[-1])
+            result = test_add(wait, elemento)
         except Exception as e:
             print(f"Error al procesar elemento {elemento}: {e}")
             result = None
@@ -109,13 +127,11 @@ def init_browser():
     driver = webdriver.Firefox(options=options)
     wait = WebDriverWait(driver, 60)
     try:
-        driver.get('https://hasbercourier.easyenvios.com/')
+        driver.get('https://hasbercourier.easyenvios.com/')        
     except Exception as e:
         print(f"Error al abrir la página principal: {e}")
         driver.quit()
         raise
-
-
 
 @app.route('/procesar_suministro', methods=['POST'])
 def procesar_suministro():
@@ -133,9 +149,9 @@ def procesar_suministro():
     
     if suministro is None:
         return jsonify({"error": "Debe proporcionar un suministro."}), 400
-
     try:
         result = test_queue(driver, wait, suministro)
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -143,5 +159,4 @@ def procesar_suministro():
 
 if __name__ == "__main__":
     init_browser()  # Inicializa el navegador cuando se inicia la aplicación
-    # app.run(host='0.0.0.0',debug=True,port=5000)
-
+    app.run(host='0.0.0.0',port=5000)
